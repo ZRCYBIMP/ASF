@@ -122,7 +122,7 @@ class StandardFigure:
             self.fig, self.axs = plt.subplots(self.rows, self.columns, 
                                               figsize=(self.params.fig_width, self.fig_height), 
                                               subplot_kw={'projection': '3d'},
-                                              dpi=300)
+                                              dpi=100)
     
     def get_subfig(self, row=None, column=None, index=None):
 
@@ -200,8 +200,7 @@ class StandardFigure:
         mpl_colormap = scico_diverging_map.get_mpl_color_map()
         return mpl_colormap
     
-    @staticmethod
-    def create_colorbar(image, aspect_ratio=14, padding_fraction=1, **kwargs):
+    def create_colorbar(self, image, aspect_ratio=14, padding_fraction=1, **kwargs):
         """
         为图像添加一个垂直的颜色条。
 
@@ -214,6 +213,9 @@ class StandardFigure:
         返回值:
         colorbar: 添加到图像的颜色条对象。
         """
+        # bounds = [self.norm.vmin, self.norm.vcenter, self.norm.vmax]
+        # mappable = plt.cm.ScalarMappable(norm=self.norm, cmap=self.cmap)
+        # image=mappable
         # 创建一个与图像关联的可分隔轴对象
         divider = make_axes_locatable(image.axes)
         # 计算颜色条的宽度
@@ -228,22 +230,24 @@ class StandardFigure:
         plt.sca(current_axes)
         # 为图像添加颜色条
         colorbar = image.axes.figure.colorbar(image, cax=colorbar_axes, **kwargs)
+        # colorbar = self.fig.colorbar(mappable, cax=colorbar_axes, ticks=bounds)
+
         return colorbar
 
-    def set_imshow_params(self, data, cmap='seismic', equal_length_norm=True, interpolation='lanczos', colorbar=True, invert_yaxis=True):
+    def set_imshow_params(self, data, cmap_name='seismic', equal_length_norm=True, interpolation='lanczos', colorbar=True, invert_yaxis=True):
         """
         设置用于显示图像数据的参数。
 
         参数:
         data: array_like, 显示的数据。
-        cmap: str, 使用的颜色映射，默认为 'seismic'。
+        cmap_name: str, 使用的颜色映射，默认为 'seismic'。
         equal_length_norm: bool, 是否使用等长度归一化，默认为 True。
         interpolation: str, 图像的插值方法，默认为 'lanczos'。
         colorbar: bool, 是否显示颜色条，默认为 True。
         invert_yaxis: bool, 是否翻转y轴, 默认为 True。
         """
         self.data = data
-        self.cmap = self.get_scico_colormap(cmap)  # 获取颜色映射
+        self.cmap = self.get_scico_colormap(cmap_name)  # 获取颜色映射
         self.interpolation = interpolation
         self.colorbar = colorbar
         self.equal_length_norm = equal_length_norm
@@ -343,19 +347,22 @@ class StandardFigure:
         self.ax.xaxis.set_major_formatter(FormatStrFormatter(f"%{'.%df' % self.x_decimal}" if self.x_decimal > 0 else "%d"))
         self.ax.yaxis.set_major_formatter(FormatStrFormatter(f"%{'.%df' % self.y_decimal}" if self.y_decimal > 0 else "%d"))
 
-    def set_label_and_title_params(self, x_label=None, y_label=None, subtitle=None):
+    def set_label_and_title_params(self, x_label=None, y_label=None, z_label=None, subtitle=None):
         """
         设置图像的标签和标题参数。
 
         参数:
         x_label: str, x轴标签, 默认为 'x'。
         y_label: str, y轴标签, 默认为 'y'。
+        z_label: str, y轴标签, 默认为 'z'。
         subtitle: str, 图像的子标题。
         """
         # 设置x轴标签，默认为 'x'
         self.x_label = x_label if x_label is not None else 'x'
         # 设置y轴标签，默认为 'y'
         self.y_label = y_label if y_label is not None else 'y'
+        # 设置z轴标签，默认为 'z'
+        self.z_label = z_label if z_label is not None else 'z'
         # 设置子标题
         self.subtitle = subtitle
 
@@ -369,6 +376,8 @@ class StandardFigure:
         # 设置x轴和y轴标签
         self.ax.set_xlabel(self.x_label, fontsize=self.params.label_fontsize)
         self.ax.set_ylabel(self.y_label, fontsize=self.params.label_fontsize)
+        if self.projection3d:
+            self.ax.set_zlabel(self.z_label, fontsize=self.params.label_fontsize, rotation=90, verticalalignment='center',  labelpad=0.1)
         # 设置刻度标签的字体大小
         self.ax.tick_params(labelsize=self.params.label_tick_size)
 
@@ -448,13 +457,13 @@ if __name__ == "__main__":
     # fig1.get_subfig(index=index)  # 获取指定索引的子图，此行代码似乎未完成实现
 
     # data0 = data[0].T         # 重新转置数据，看起来是重复的步骤
-    cmap = 'seismic'          # 设置颜色映射为地震颜色
+    cmap_name = 'seismic'          # 设置颜色映射为地震颜色
     equal_length_norm=True    # 设置是否使用等长度的归一化
     interpolation='none'      # 设置插值方式为无，保持数据像素的原始显示
     invert_yaxis = True
 
     # 设置用于显示图像的参数
-    fig1.set_imshow_params(data=data, cmap=cmap, 
+    fig1.set_imshow_params(data=data, cmap_name=cmap_name, 
                            equal_length_norm=equal_length_norm,
                            interpolation=interpolation)
     fig1.set_batch_norm(vmin=-100, vcenter=0, vmax=100)  # 设置归一化参数

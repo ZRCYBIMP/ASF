@@ -26,13 +26,13 @@ def batch_process():
     # fig1.get_subfig(index=index)  # 获取指定索引的子图，此行代码似乎未完成实现
 
     # data0 = data[0].T         # 重新转置数据，看起来是重复的步骤
-    cmap = 'seismic'          # 设置颜色映射为地震颜色
+    cmap_name = 'seismic'          # 设置颜色映射为地震颜色
     equal_length_norm=True    # 设置是否使用等长度的归一化
     interpolation='none'      # 设置插值方式为无，保持数据像素的原始显示
     invert_yaxis = True       # 设置y轴翻转
 
     # 设置用于显示图像的参数
-    fig1.set_imshow_params(data=data, cmap=cmap, 
+    fig1.set_imshow_params(data=data, cmap_name=cmap_name, 
                             equal_length_norm=equal_length_norm,
                             interpolation=interpolation,
                             invert_yaxis=invert_yaxis)
@@ -89,13 +89,13 @@ def single_process():
         index = index # 设置索引，可能用于选择特定的子图
         fig1.get_subfig(index=index)  # 获取指定索引的子图，此行代码似乎未完成实现
 
-        cmap = 'seismic'          # 设置颜色映射为地震颜色
+        cmap_name = 'seismic'          # 设置颜色映射为地震颜色
         equal_length_norm=True    # 设置是否使用等长度的归一化
         interpolation='none'      # 设置插值方式为无，保持数据像素的原始显示
         invert_yaxis = True       # 设置y轴翻转
 
         # 设置用于显示图像的参数
-        fig1.set_imshow_params(data=data, cmap=cmap, 
+        fig1.set_imshow_params(data=data, cmap_name=cmap_name, 
                                 equal_length_norm=equal_length_norm,
                                 interpolation=interpolation,
                                 invert_yaxis=invert_yaxis)
@@ -118,8 +118,8 @@ def single_process():
 
         # 设置刻度参数
         fig1.set_ticks_params(x_tick_label_step=x_tick_label_step, y_tick_label_step=y_tick_label_step,
-                            x_decimal=x_decimal, y_decimal=y_decimal,
-                            x_num=x_num, y_num=y_num, x_tick_interval=x_tick_interval, y_tick_interval=y_tick_interval)
+                              x_decimal=x_decimal, y_decimal=y_decimal,
+                              x_num=x_num, y_num=y_num, x_tick_interval=x_tick_interval, y_tick_interval=y_tick_interval)
         fig1.add_axis_ticks()  # 批量添加刻度
 
     add_imshow(index = 1, data = data[0])
