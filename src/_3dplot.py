@@ -273,10 +273,6 @@ if __name__ == "__main__":
 
     fig1.set_pane_color()
 
-    # ax.set_xlabel('X')
-    # ax.set_ylabel('Y')
-    # ax.set_zlabel('Z')    
-
     x_label = 'X/m'
     y_label = 'Y(km)'
     z_label = 'Z*1'

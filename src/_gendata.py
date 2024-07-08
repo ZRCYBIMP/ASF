@@ -1,5 +1,7 @@
-from src._constants import GraModel, graSensitivity, MagModel, magSensitivity
-
+try:
+    from src._constants import GraModel, graSensitivity, MagModel, magSensitivity
+except:
+    from _constants import GraModel, graSensitivity, MagModel, magSensitivity
 def gendata():
 
     model = GraModel(0, 1000, 35 * 1000, 
