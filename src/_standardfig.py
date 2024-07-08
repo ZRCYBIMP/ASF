@@ -119,12 +119,12 @@ class StandardFigure:
         if not self.projection3d:
             self.fig, self.axs = plt.subplots(self.rows, self.columns, 
                                               figsize=(self.params.fig_width, self.fig_height), 
-                                              constrained_layout=True, dpi=100)
+                                              constrained_layout=True, dpi=300)
         else:
             self.fig, self.axs = plt.subplots(self.rows, self.columns, 
                                               figsize=(self.params.fig_width, self.fig_height), 
                                               subplot_kw={'projection': '3d'},
-                                              constrained_layout=True, dpi=100)
+                                              constrained_layout=True, dpi=300)
     
     def get_subfig(self, row=None, column=None, index=None):
         """
@@ -153,38 +153,76 @@ class StandardFigure:
             self.ax = self.axs[row - 1, column - 1]
             return
         
-    @staticmethod
-    def create_two_slope_norm(data, equal_lengths=True):
+    def create_two_slope_norm(self, data=None, equal_lengths=True,
+                              vmin=None, vcenter=None, vmax=None):
         """
-        创建一个具有两个斜率的归一化对象，用于颜色映射。
+        创建具有两个斜率的归一化对象。此方法可以自动处理正负数值范围的归一化。
 
         参数:
-        data: 数组，输入数据，用于确定归一化范围。
-        equal_lengths: 布尔值，是否在正负范围内使用相同的长度。
+        data (array-like): 输入数据，用于计算归一化的范围。
+        equal_lengths (bool): 是否在正负范围内使用相同长度。
+        vmin (float): 归一化的最小值。
+        vcenter (float): 归一化的中心值。
+        vmax (float): 归一化的最大值。
 
-        返回值:
-        norm: 具有两个斜率的归一化对象。
+        返回:
+        None, 但会设置 self.norm 为创建的归一化对象。
         """
-        if equal_lengths:
-            # 如果正负范围使用相同长度，则取数据绝对值的最大值作为范围
-            data_max = np.max(abs(data))
-            vmin = -data_max
-            vcenter = 0
-            vmax = data_max
-        else:
-            # 如果不使用相同长度，则取数据的最小值和最大值作为范围
-            vmin = np.min(data)
-            vmax = np.max(data)
-            # 判断数据是否跨越零点
-            if vmin * vmax < 0:
-                vcenter = 0
-            else:
-                vcenter = (vmax + vmin) / 2
+        try:
+            if data is not None:
+                # 根据数据自动计算归一化范围
+                if equal_lengths:
+                    data_max = np.max(np.abs(data))
+                    vmin = -data_max
+                    vcenter = 0
+                    vmax = data_max
+                else:
+                    vmin = np.min(data)
+                    vmax = np.max(data)
+                    if vmin * vmax < 0:  # 数据跨零点
+                        vcenter = 0
+                    else:
+                        vcenter = (vmax + vmin) / 2
 
-        # 创建具有两个斜率的归一化对象
-        norm = mpl.colors.TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
-        return norm
-    
+            if vmin is not None and vmax is not None:
+                self.norm = mpl.colors.TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
+            else:
+                raise ValueError("Minimum and maximum values are required for normalization.")
+        except Exception as e:
+            print(f"Error creating two slope normalization: {e}")
+
+
+    def create_norm(self, data=None, equal_lengths=None, vmin=None, vmax=None):
+        """
+        根据提供的数据创建一个线性归一化对象。可选择是否使用等长的正负值范围。
+
+        参数:
+        data (array-like): 输入数据，用于计算归一化的范围。
+        equal_lengths (bool): 是否在正负范围内使用相同长度。
+        vmin (float): 归一化的最小值，如果不提供将根据数据计算。
+        vmax (float): 归一化的最大值，如果不提供将根据数据计算。
+
+        返回:
+        None, 但会设置 self.norm 为创建的归一化对象。
+        """
+        try:
+            if data is not None and equal_lengths is not None:
+                # 根据数据自动计算归一化范围
+                if equal_lengths:
+                    data_max = np.max(np.abs(data))
+                    vmin = -data_max
+                    vmax = data_max
+                else:
+                    vmin = np.min(data)
+                    vmax = np.max(data)
+
+            if vmin is not None and vmax is not None:
+                self.norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+            else:
+                raise ValueError("Minimum and maximum values are required for normalization.")
+        except Exception as e:
+            print(f"Error creating normalization: {e}")
+
     @staticmethod
     def get_scico_colormap(map_name):
         """
@@ -265,10 +303,10 @@ class StandardFigure:
         if invert_yaxis:
             self.ax.invert_yaxis()
 
-    def set_ticks_params(self, x_tick_label_step, y_tick_label_step,
-                         x_decimal=0, y_decimal=0,
-                         x_tick_interval=None, y_tick_interval=None,
-                         custom_x_ticks=None, custom_y_ticks=None):
+    def set_ticks_params(self, x_tick_label_step, y_tick_label_step, z_tick_label_step=None,
+                         x_decimal=0, y_decimal=0, z_decimal=0,
+                         x_tick_interval=None, y_tick_interval=None, z_tick_interval=None,
+                         custom_x_ticks=None, custom_y_ticks=None, custom_z_ticks=None):
         """
         设置x轴和y轴的刻度参数。
 
@@ -286,14 +324,15 @@ class StandardFigure:
         """
         self.x_tick_type = None
         self.y_tick_type = None
-        
+        self.z_tick_type = None
         self.x_decimal = x_decimal
         self.y_decimal = y_decimal
+        self.z_decimal = z_decimal
 
-        try:
+        if z_tick_label_step is not None:
+            self.y_num, self.x_num, self.z_num = self.data.shape
+        else:
             self.y_num, self.x_num = self.data.shape
-        except:
-            self.y_num, self.x_num = self.data[0].shape
 
         # 根据自定义刻度位置直接绘制刻度
         if custom_x_ticks is not None:
@@ -304,6 +343,10 @@ class StandardFigure:
             self.y_tick_type = 'custom'
             self.y_ticks = custom_y_ticks
             self.y_tick_labels = [f"{y_tick_label_step*element:.{y_decimal}f}" for element in custom_y_ticks]
+        if custom_z_ticks is not None:
+            self.z_tick_type = 'custom'
+            self.z_ticks = custom_z_ticks
+            self.z_tick_labels = [f"{z_tick_label_step*element:.{z_decimal}f}" for element in custom_z_ticks]
 
         # 通过固定的刻度间隔配置刻度
         if x_tick_interval is not None and self.x_tick_type is None:
@@ -314,6 +357,10 @@ class StandardFigure:
             self.y_tick_type = 'interval'
             self.y_ticks = list(range(0, self.y_num, y_tick_interval))
             self.y_tick_labels = [f"{y_tick_label_step*element:.{y_decimal}f}" for element in self.y_ticks]
+        if z_tick_interval is not None and self.z_tick_type is None:
+            self.z_tick_type = 'interval'
+            self.z_ticks = list(range(0, self.z_num, z_tick_interval))
+            self.z_tick_labels = [f"{z_tick_label_step*element:.{z_decimal}f}" for element in self.z_ticks]
 
     def add_axis_ticks(self):
         """
@@ -328,6 +375,10 @@ class StandardFigure:
         # 配置标签的数字格式
         self.ax.xaxis.set_major_formatter(FormatStrFormatter(f"%{'.%df' % self.x_decimal}" if self.x_decimal > 0 else "%d"))
         self.ax.yaxis.set_major_formatter(FormatStrFormatter(f"%{'.%df' % self.y_decimal}" if self.y_decimal > 0 else "%d"))
+        if self.z_tick_type is not None:
+            self.ax.set_zticks(self.z_ticks)
+            self.ax.set_zticklabels(self.z_tick_labels, fontsize=self.params.label_tick_size)
+            self.ax.zaxis.set_major_formatter(FormatStrFormatter(f"%{'.%df' % self.z_decimal}" if self.z_decimal > 0 else "%d"))
 
     def set_colorbar_ticks_params(self, cbar_name=None, cbar_ticks=None, cbar_decimal=0, cbar_aspect=14, orientation='vertical'):
         """
@@ -372,7 +423,6 @@ class StandardFigure:
         self.cbar.formatter = ticker.FormatStrFormatter(decimal_format)
         self.cbar.update_ticks()
 
-
     def set_label_and_title_params(self, x_label=None, y_label=None, z_label=None, subtitle=None):
         """
         设置图像的标签和标题参数。
@@ -406,20 +456,6 @@ class StandardFigure:
             self.ax.set_zlabel(self.z_label, fontsize=self.params.label_fontsize, rotation=90, verticalalignment='center',  labelpad=0.1)
         # 设置刻度标签的字体大小
         self.ax.tick_params(labelsize=self.params.label_tick_size)
-
-    def set_batch_norm(self, vmin, vmax, vcenter=None):
-        """"
-        设置数据的双斜率归一化参数。
-
-        参数:
-        vmin: float, 归一化的最小值。
-        vcenter: float, 归一化的中心值。
-        vmax: float, 归一化的最大值。
-        """
-        if vcenter:
-            self.norm = mpl.colors.TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
-        else:
-            self.norm = mpl.colors.Normalize(vmin=vmin, vmax = vmax)
 
     def batch_show_data(self):
         """
@@ -500,7 +536,7 @@ class StandardFigure:
             # 设置数值格式化
             self.ax.xaxis.set_major_formatter(ticker.FormatStrFormatter(f"%{'.%df' % self.x_decimal}" if self.x_decimal > 0 else "%d"))
             self.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter(f"%{'.%df' % self.y_decimal}" if self.y_decimal > 0 else "%d"))
-            
+
     def add_unified_colorbar(self):
         """
         为所有子图添加统一的颜色条。设置颜色条的标签、刻度及其格式。
@@ -508,7 +544,7 @@ class StandardFigure:
         颜色条的方向、长宽比及其它参数需事先在类属性中设置。
 
         返回:
-        None，直接修改了 self.cbar 属性。
+        None, 直接修改了 self.cbar 属性。
         """
         try:
             # 添加颜色条到图形
@@ -545,71 +581,74 @@ if __name__ == "__main__":
     projection3d = False      # 设置是否为3D图形，这里为2D
 
     data = data_list[0]  # 转置第一个数据集，通常用于调整数据的行列关系
-    print(data.shape)
-
     weight_height_ratio = data.shape[0]/data.shape[1]    # 计算图像的宽高比，保证图像的显示比例合理
 
-    fig1 = StandardFigure()   # 创建一个标准图形实例
+    sf = StandardFigure()   # 创建一个标准图形实例
 
     # 设置基本参数，初始化图形布局和尺寸
-    fig1.set_base_params(layout=layout, rows=rows, columns=columns, 
-                         weight_height_ratio=weight_height_ratio, 
-                         projection3d=projection3d)
-    fig1.create_figure()      # 创建图形
-
-    # index = 1                 # 设置索引，可能用于选择特定的子图
-    # fig1.get_subfig(index=index)  # 获取指定索引的子图
+    sf.set_base_params(layout=layout, rows=rows, columns=columns, 
+                       weight_height_ratio=weight_height_ratio, 
+                       projection3d=projection3d)
 
     cmap_name = 'seismic'          # 设置颜色映射为地震颜色
     equal_length_norm=True    # 设置是否使用等长度的归一化
     interpolation='none'      # 设置插值方式为无，保持数据像素的原始显示
     invert_yaxis = False
     colorbar = False
-    fig1.set_imshow_params(data_list=data_list, data=data, cmap_name=cmap_name, 
-                           equal_length_norm=equal_length_norm,
-                           interpolation=interpolation,
-                           colorbar=colorbar)
+    sf.set_imshow_params(data_list=data_list, data=data, cmap_name=cmap_name, 
+                         equal_length_norm=equal_length_norm,
+                         interpolation=interpolation,
+                         colorbar=colorbar)
     
     cbar_name = 'colorbar'
     cbar_ticks = None
     cbar_decimal = 1
     cbar_aspect = 30
     orientation = 'vertical'
-    fig1.set_colorbar_ticks_params(cbar_name=cbar_name, cbar_ticks=cbar_ticks, 
-                                   cbar_decimal=cbar_decimal, cbar_aspect=cbar_aspect,
-                                   orientation=orientation )
-    # 设置用于显示图像的参数
-    fig1.norm = fig1.create_two_slope_norm(fig1.data_list, equal_lengths=equal_length_norm)
+    sf.set_colorbar_ticks_params(cbar_name=cbar_name, cbar_ticks=cbar_ticks, 
+                                 cbar_decimal=cbar_decimal, cbar_aspect=cbar_aspect,
+                                 orientation=orientation )
     
-    # fig1.set_batch_norm(vmin=-100, vcenter=0, vmax=100)  # 设置归一化参数
-    fig1.batch_show_data()  # 批量显示数据
-    # fig1.show_data()
-    # fig1.batch_add_colorbar()
-
     x_label = 'x(km)'        # 设置x轴标签
-    y_label = '深度/100'     # 设置y轴标签
+    y_label = '深度/100'      # 设置y轴标签
     subtitle = None          # 未设置子标题（使用默认子标题）
-    fig1.set_label_and_title_params(x_label=x_label, y_label=y_label, subtitle=subtitle)
-    # fig1.batch_add_labels_and_titles()  # 批量设置子图的标签和标题
-    # fig1.add_labels_and_title()
+    sf.set_label_and_title_params(x_label=x_label, y_label=y_label, subtitle=subtitle)
 
     x_tick_label_step, y_tick_label_step = 1.0, 1.0  # 设置刻度标签步长
     x_decimal = 1                                   # 设置x轴刻度的小数位数
     y_decimal = 0                                   # 设置y轴刻度的小数位数
     x_tick_interval, y_tick_interval = 10, 10       # 设置刻度间隔
-
     # 设置刻度参数
-    fig1.set_ticks_params(x_tick_label_step=x_tick_label_step, y_tick_label_step=y_tick_label_step,
-                          x_decimal=x_decimal, y_decimal=y_decimal,
-                          x_tick_interval=x_tick_interval, y_tick_interval=y_tick_interval)
+    sf.set_ticks_params(x_tick_label_step=x_tick_label_step, y_tick_label_step=y_tick_label_step,
+                        x_decimal=x_decimal, y_decimal=y_decimal,
+                        x_tick_interval=x_tick_interval, y_tick_interval=y_tick_interval)
     
-    fig1.batch_add_ticks_and_labels_simplified()
-    fig1.add_unified_colorbar()
+    sf.create_figure()            # 创建图形
+    # index = 1                   # 设置索引，可能用于选择特定的子图
+    # sf.get_subfig(index=index)  # 获取指定索引的子图
 
-    # fig1.batch_add_axis_ticks()  # 批量添加刻度
-    # fig1.add_axis_ticks()
+    # 设置归一化参数
+    sf.create_two_slope_norm(data=sf.data_list, equal_lengths=equal_length_norm)
+    # sf.create_norm(vmin=-100, vmax=100)  
 
-    # fig1.fig.tight_layout()      # 自动调整布局，避免内容重叠
+    # 生成数据图像
+    sf.batch_show_data()  # 批量显示数据
+    # sf.show_data()
 
-    plt.savefig('test.tiff')     # 保存图像到文件
+    # 添加子图的标签和标题
+    # sf.add_labels_and_title()
+    # sf.batch_add_labels_and_titles() 
+
+    # 批量添加刻度
+    # sf.add_axis_ticks()
+    # sf.batch_add_axis_ticks()  
+
+    sf.batch_add_ticks_and_labels_simplified()
+
+    # 添加colorbar
+    # sf.batch_add_colorbar()
+    sf.add_unified_colorbar()
+
+    plt.savefig('test.tiff', dpi=300)     # 保存图像到文件
+
     plt.show()                   # 显示图像

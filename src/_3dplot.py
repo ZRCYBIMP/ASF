@@ -3,6 +3,9 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from copy import copy
 import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable, axes_size
+import matplotlib as mpl
+import matplotlib.ticker as ticker
+
 try:
     from src._standardfig import StandardFigure
 except:
@@ -109,8 +112,7 @@ class Plot3D(StandardFigure):
 
         return face_color
 
-    @staticmethod
-    def set_axis_limits(ax, x_limit, y_limit, z_limit):
+    def set_axis_limits(self, x_limit, y_limit, z_limit):
         """
         设置3D图的坐标轴限制。
 
@@ -120,16 +122,16 @@ class Plot3D(StandardFigure):
         y_limit: y轴的限制。
         z_limit: z轴的限制。
         """
-        ax.set_xlim([0, x_limit + 1])
-        ax.set_ylim([0, y_limit + 1])
-        ax.set_zlim([z_limit + 1, 0])
+        self.ax.set_xlim([0, x_limit + 1])
+        self.ax.set_ylim([0, y_limit + 1])
+        self.ax.set_zlim([z_limit + 1, 0])
 
     def set_pane_color(self):
         self.ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
         self.ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
         self.ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
 
-    def add_colorbar_3d(self, shrink=0.6, pad=0.15):
+    def add_colorbar_3d(self, shrink=0.5, pad=0.15, ticks=None):
         """
         为3D图添加颜色条。
 
@@ -143,39 +145,48 @@ class Plot3D(StandardFigure):
         返回值:
         cbar: 颜色条对象。
         """
-        bounds = [self.norm.vmin, self.norm.vcenter, self.norm.vmax]
-        mappable = plt.cm.ScalarMappable(norm=self.norm, cmap=self.cmap)
-        cbar = self.fig.colorbar(mappable, ax=self.ax, shrink=shrink, pad=pad, ticks=bounds)
-        # cbar = add_colorbar(ax)
-        return cbar
+        if ticks is None:
+            ticks = [self.norm.vmin, self.norm.vcenter, self.norm.vmax]
+        mappable = mpl.cm.ScalarMappable(norm=self.norm, cmap=self.cmap)
+        self.cbar = self.fig.colorbar(mappable, ax=self.ax, shrink=shrink, pad=pad, ticks=ticks)
+
+        if self.cbar_name:
+            self.cbar.set_label(self.cbar_name, fontsize=self.params.label_fontsize)
+
+        if self.cbar_ticks:
+            self.cbar.set_ticks(self.cbar_ticks)
+
+        decimal_format = f"%.{self.cbar_decimal}f" if self.cbar_decimal > 0 else "%d"
+        self.cbar.formatter = ticker.FormatStrFormatter(decimal_format)
+        self.cbar.update_ticks()
 
 
-    def auto_adjust_colorbar(self, mappable, orientation='vertical', aspect_ratio=14, padding_fraction=0.5, **kwargs):
-        """
-        自动计算并添加颜色条，适用于2D和3D图形。
+    # def auto_adjust_colorbar(self, mappable, orientation='vertical', aspect_ratio=14, padding_fraction=0.5, **kwargs):
+    #     """
+    #     自动计算并添加颜色条，适用于2D和3D图形。
 
-        参数:
-        ax: 轴对象，可以是2D或3D。
-        mappable: 可映射的对象，例如来自`imshow`、`scatter`或`plot_surface`的对象。
-        orientation: 颜色条的方向，默认为'vertical'。
-        aspect_ratio: 颜色条的纵横比，默认为20。
-        padding_fraction: 颜色条与图形的间距比例，默认为0.5。
-        **kwargs: 传递给colorbar的其他参数。
+    #     参数:
+    #     ax: 轴对象，可以是2D或3D。
+    #     mappable: 可映射的对象，例如来自`imshow`、`scatter`或`plot_surface`的对象。
+    #     orientation: 颜色条的方向，默认为'vertical'。
+    #     aspect_ratio: 颜色条的纵横比，默认为20。
+    #     padding_fraction: 颜色条与图形的间距比例，默认为0.5。
+    #     **kwargs: 传递给colorbar的其他参数。
 
-        返回值:
-        colorbar: 添加到图像的颜色条对象。
-        """
-        # 创建一个与图像关联的可分隔轴对象
-        ax_pos = self.ax.get_position()
+    #     返回值:
+    #     colorbar: 添加到图像的颜色条对象。
+    #     """
+    #     # 创建一个与图像关联的可分隔轴对象
+    #     ax_pos = self.ax.get_position()
 
-        print(ax_pos, ax_pos.height)
-        width = ax_pos.height/aspect_ratio
-        print(width)
-        cb_ax_pos = [ax_pos.x1+width*padding_fraction, 0.1*ax_pos.height+ax_pos.y0, width, 0.8*ax_pos.height]
-        print(cb_ax_pos)
-        cb_ax = self.fig.add_axes(cb_ax_pos)
-        colorbar = self.fig.colorbar(mappable,ax=self.ax, cax=cb_ax, orientation=orientation, **kwargs)
-        return colorbar
+    #     print(ax_pos, ax_pos.height)
+    #     width = ax_pos.height/aspect_ratio
+    #     print(width)
+    #     cb_ax_pos = [ax_pos.x1+width*padding_fraction, 0.1*ax_pos.height+ax_pos.y0, width, 0.8*ax_pos.height]
+    #     print(cb_ax_pos)
+    #     cb_ax = self.fig.add_axes(cb_ax_pos)
+    #     colorbar = self.fig.colorbar(mappable,ax=self.ax, cax=cb_ax, orientation=orientation, **kwargs)
+    #     return colorbar
     
     def make_3d_figure(self, data, colormap_name, size_adjustment, transparency_adjustment, data_threshold, edge_color, show_empty=False, transparent=True):
         """
@@ -195,7 +206,7 @@ class Plot3D(StandardFigure):
         """
         
         self.cmap = self.get_scico_colormap(colormap_name)
-
+        self.data = data
         for (i, j, k), value in np.ndenumerate(data):
             face_color = self.set_face_color(self.norm, self.cmap, value, transparency_adjustment)
             x1, x2, y1, y2, z1, z2 = i, i + 1, j, j + 1, k, k + 1
@@ -203,29 +214,41 @@ class Plot3D(StandardFigure):
             edge_color[3] = face_color[3] / 10
             # print(face_color, edge_color)
             self.add_cube(self.ax, faces, face_color, data_threshold, edge_color, show_empty, transparent)
-            self.set_axis_limits(self.ax, i + 1, j + 1, k + 1)
+            self.set_axis_limits(i + 1, j + 1, k + 1)
             self.ax.set_box_aspect([i + 1, j + 1, k + 1])
 
-# def generate_gif(ax, save_path):
-#     """
-#     生成并保存3D图的GIF动画。
+    def adjust_fig_layout(self, elevation=30, azimuth=120):
 
-#     参数:
-#     ax: 3D轴对象。
-#     save_path: 动画保存路径。
-#     """
+        self.ax.zaxis._axinfo['juggled'] = (1,2,0)
+        self.ax.invert_xaxis()
+        self.ax.invert_yaxis()
+
+        self.ax.view_init(elev=elevation, azim=azimuth)
+        ax_pos = sf.ax.get_position()
+        self.ax.set_position([ax_pos.x0+0.2*ax_pos.width, ax_pos.y0, ax_pos.width*0.9, ax_pos.height])  # 这些值也是以图形窗口的比例为单位
+
+        self.set_pane_color()
+
+def generate_gif(fig, ax, save_path):
+    """
+    生成并保存3D图的GIF动画。
+
+    参数:
+    ax: 3D轴对象。
+    save_path: 动画保存路径。
+    """
     
-#     from matplotlib.animation import FuncAnimation
+    from matplotlib.animation import FuncAnimation
 
-#     def update(frame):
-#         ax.view_init(elev=30, azim=frame)
-#         return fig,
+    def update(frame):
+        ax.view_init(elev=30, azim=frame)
+        return fig,
 
-#     # 创建动画
-#     animation = FuncAnimation(fig, update, frames=np.arange(0, 360, 10), interval=50)
+    # 创建动画
+    animation = FuncAnimation(fig, update, frames=np.arange(0, 360, 30), interval=50)
 
-#     # 保存动画
-#     animation.save(save_path + '.gif', writer='Pillow')
+    # 保存动画
+    animation.save(save_path + '.gif', writer='Pillow')
 
 if __name__ == "__main__":
 
@@ -235,79 +258,72 @@ if __name__ == "__main__":
     projection3d = True      # 设置是否为3D图形，这里为2D
     weight_height_ratio = 1   # 设置图片的宽高比，通常用于保证图像的显示比例合理
 
-    fig1 = Plot3D()   # 创建一个标准图形实例
+    sf = Plot3D()   # 创建一个标准图形实例
 
     # 设置基本参数，初始化图形布局和尺寸
-    fig1.set_base_params(layout=layout, rows=rows, columns=columns, 
-                         weight_height_ratio=weight_height_ratio, 
-                         projection3d=projection3d)
-    fig1.create_figure()      # 创建图形
+    sf.set_base_params(layout=layout, rows=rows, columns=columns, 
+                       weight_height_ratio=weight_height_ratio, 
+                       projection3d=projection3d)
+    sf.create_figure()      # 创建图形
+
+    index = 1
+    sf.get_subfig(index=index)
 
     data = np.load('./data/gra_1_inv.npy')
 
-    # data_max = np.max(data)
-
-    # vmin = -data_max
-    # vcenter = 0
-    # vmax = data_max
-    # norm = mpl.colors.TwoSlopeNorm(vmin=vmin, vcenter=vcenter, vmax=vmax)
     cmap_name = 'seismic'          # 设置颜色映射为地震颜色
-    fig1.equal_length_norm=True    # 设置是否使用等长度的归一化
-    fig1.norm = fig1.create_two_slope_norm(data, equal_lengths=True)
+    sf.equal_length_norm=True    # 设置是否使用等长度的归一化
+    sf.create_two_slope_norm(data=data, equal_lengths=True)
     
     size_adj = 0
     data_threshold = 0.3
     transparent_adj = 1
     show_empty = False
     transparent = True
-
     edge_color = [0.1, 0.1, 0.1, 0.01]
-
-    index = 1
-    fig1.get_subfig(index=index)
-    print(fig1.ax)
-    fig1.make_3d_figure(data=data, colormap_name=cmap_name, 
-                        size_adjustment=size_adj, transparency_adjustment=transparent_adj,
-                        data_threshold = data_threshold, edge_color = edge_color,
-                        show_empty=show_empty, transparent=transparent)
-
-    fig1.set_pane_color()
+    sf.make_3d_figure(data=data, colormap_name=cmap_name, 
+                      size_adjustment=size_adj, transparency_adjustment=transparent_adj,
+                      data_threshold = data_threshold, edge_color = edge_color,
+                      show_empty=show_empty, transparent=transparent)
 
     x_label = 'X/m'
     y_label = 'Y(km)'
     z_label = 'Z*1'
     subtitle = 'Fig_test'
-    fig1.set_label_and_title_params(x_label=x_label, y_label=y_label, z_label=z_label, subtitle=subtitle)
-    fig1.add_labels_and_title()  # 批量设置子图的标签和标题
-    # ax.zaxis.set_rotate_label(False)  # 禁用 z 轴标签的旋转
+    sf.set_label_and_title_params(x_label=x_label, y_label=y_label, z_label=z_label, subtitle=subtitle)
+    sf.add_labels_and_title()  # 批量设置子图的标签和标题
 
+    x_tick_label_step, y_tick_label_step, z_tick_label_step = 1.0, 1.0, 1.0  # 设置刻度标签步长
+    x_decimal = 1                                   # 设置x轴刻度的小数位数
+    y_decimal = 0                                   # 设置y轴刻度的小数位数
+    z_decimal = 1
+    x_tick_interval, y_tick_interval,z_tick_interval = 10, 10, 5       # 设置刻度间隔
+    # 设置刻度参数
+    sf.set_ticks_params(x_tick_label_step=x_tick_label_step, y_tick_label_step=y_tick_label_step,z_tick_label_step=z_tick_interval,
+                        x_decimal=x_decimal, y_decimal=y_decimal, z_decimal=z_decimal,
+                        x_tick_interval=x_tick_interval, y_tick_interval=y_tick_interval, z_tick_interval=z_tick_interval)
+    sf.add_axis_ticks()
 
+    cbar_name = 'colorbar'
+    cbar_ticks = None
+    cbar_decimal = 1
+    cbar_aspect = 30
+    orientation = 'vertical'
+    sf.set_colorbar_ticks_params(cbar_name=cbar_name, cbar_ticks=cbar_ticks, 
+                                 cbar_decimal=cbar_decimal, cbar_aspect=cbar_aspect,
+                                 orientation=orientation )
+    
+    shrink=0.3
+    pad=0.15
+    ticks=None
+    sf.add_colorbar_3d(shrink=shrink, pad=pad, ticks=ticks)
 
+    elevation = 30
+    azimuth = 120
+    sf.adjust_fig_layout(elevation=elevation, azimuth=azimuth)
 
-    # fig1.ax.invert_zaxis()
-    # # cbar = add_colorbar(ax, norm, cmap, shrink = 0.6, pad = 0.15)
-    elevation = 20
-    azimuth = 150
-    bounds = [fig1.norm.vmin, fig1.norm.vcenter, fig1.norm.vmax]
-    mappable = plt.cm.ScalarMappable(norm=fig1.norm, cmap=fig1.cmap)
-    # cbar = fig1.create_colorbar(fig1.ax)
-    # cbar = fig1.auto_adjust_colorbar(mappable=mappable)
+    # savepath = './figure/rotation'
+    # generate_gif(sf.fig, sf.ax, savepath)
 
-    cbar = fig1.add_colorbar_3d(shrink=0.5, pad=0.2)
-    fig1.ax.zaxis._axinfo['juggled'] = (1,2,0)
-    # ax.view_init(elev=elevation, azim=azimuth)
-    # fig1.fig.tight_layout() 
-    ax_pos = fig1.ax.get_position()
-
-    fig1.ax.set_position([ax_pos.x0+0.2*ax_pos.width, ax_pos.y0, ax_pos.width*0.9, ax_pos.height])  # 这些值也是以图形窗口的比例为单位
-
-    savepath = 'rotation'
-    # generate_gif(ax, savepath)
-
-    # def onclick(event):
-    #     print(f'你点击的位置是：({event.xdata}, {event.ydata})')
-
-    # fig.canvas.mpl_connect('button_press_event', onclick)
-
-    plt.savefig('./figure/3dplottest.tiff')
+    plt.savefig('./figure/3dplottest.tiff', dpi=300)
     plt.show()
